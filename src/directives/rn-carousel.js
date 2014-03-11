@@ -17,6 +17,7 @@
             restrict: 'A',
             scope: true,
             compile: function(tElement, tAttributes) {
+								
                 // use the compile phase to customize the DOM
                 var firstChildAttributes = tElement.children()[0].attributes,
                     isRepeatBased = false,
@@ -70,7 +71,6 @@
                         offset = 0,
                         destination,
                         slidesCount = 0,
-                        swipeMoved = false,
                         // javascript based animation easing
                         timestamp;
 
@@ -108,27 +108,18 @@
 
                     // handle index databinding
                     if (iAttributes.rnCarouselIndex) {
-                        var updateParentIndex = function(value) {
-                            indexModel.assign(scope.$parent, value);
-                        };
                         var indexModel = $parse(iAttributes.rnCarouselIndex);
                         if (angular.isFunction(indexModel.assign)) {
                             /* check if this property is assignable then watch it */
                             scope.$watch('carouselIndex', function(newValue) {
-                                updateParentIndex(newValue);
+                                indexModel.assign(scope.$parent, newValue);
                             });
                             scope.carouselIndex = indexModel(scope);
                             scope.$parent.$watch(indexModel, function(newValue, oldValue) {
-                                if (newValue!==undefined) {
-                                    if (newValue >= slidesCount) {
-                                        newValue = slidesCount - 1;
-                                        updateParentIndex(newValue);
-                                    } else if (newValue < 0) {
-                                        newValue = 0;
-                                        updateParentIndex(newValue);
-                                    }
-                                    goToSlide(newValue, true);
-                                }
+                              if (newValue!==undefined) {
+                                // todo: ensure valid
+                                goToSlide(newValue, true);
+                              }
                             });
                             isIndexBound = true;
                         } else if (!isNaN(iAttributes.rnCarouselIndex)) {
@@ -191,7 +182,15 @@
                         offset = x;
                         var move = -Math.round(offset);
                         move += (scope.carouselBufferIndex * containerWidth);
-                        carousel[0].style[transformProperty] = 'translate3d(' + move + 'px, 0, 0)';
+                        
+						/* Check Internet Explorer 9 Compatibility */		
+						if(angular.isDefined(iAttributes.rnCarouselIe9support) && typeof(requestAnimationFrame) != 'function'){
+							carousel[0].style[transformProperty] = 'translate(' + move + 'px, 0)';
+						}
+						else {
+							carousel[0].style[transformProperty] = 'translate3d(' + move + 'px, 0, 0)';
+						}
+
                     }
 
                     function autoScroll() {
@@ -203,8 +202,18 @@
                             elapsed = Date.now() - timestamp;
                             delta = amplitude * Math.exp(-elapsed / timeConstant);
                             if (delta > rubberTreshold || delta < -rubberTreshold) {
+								
                                 scroll(destination - delta);
-                                requestAnimationFrame(autoScroll);
+                                			
+                                /* Check Internet Explorer 9 Compatibility */					
+								if(angular.isDefined(iAttributes.rnCarouselIe9support) && typeof(requestAnimationFrame) != 'function'){
+									setTimeout( autoScroll, 1000 / 60 );
+								}
+								else {
+									console.log("request");
+									requestAnimationFrame(autoScroll);
+								}
+                                
                             } else {
                                 goToSlide(destination / containerWidth);
                             }
@@ -222,8 +231,6 @@
                         var bufferEdgeSize = (scope.carouselBufferSize - 1) / 2;
                         if (isBuffered) {
                             if (scope.carouselIndex <= bufferEdgeSize) {
-                                bufferIndex = 0;
-                            } else if (slidesCount < scope.carouselBufferSize) {
                                 bufferIndex = 0;
                             } else if (scope.carouselIndex > slidesCount - scope.carouselBufferSize) {
                                 bufferIndex = slidesCount - scope.carouselBufferSize;
@@ -266,7 +273,6 @@
 
                     function documentMouseUpEvent(event) {
                         // in case we click outside the carousel, trigger a fake swipeEnd
-                        swipeMoved = true;
                         swipeEnd({
                             x: event.clientX,
                             y: event.clientY
@@ -293,6 +299,8 @@
                         amplitude = 0;
                         timestamp = Date.now();
 
+                        event.preventDefault();
+                        event.stopPropagation();
                         return false;
                     }
 
@@ -303,27 +311,31 @@
                             x = coords.x;
                             delta = startX - x;
                             if (delta > 2 || delta < -2) {
-                                swipeMoved = true;
                                 startX = x;
-                                requestAnimationFrame(function() {
-                                    scroll(capPosition(offset + delta));
-                                });
+                                
+                                /* Check Internet Explorer 9 Compatibility */					
+								if(angular.isDefined(iAttributes.rnCarouselIe9support) && typeof(requestAnimationFrame) != 'function'){
+									setTimeout(function(){ 
+										scroll(capPosition(offset + delta)) 
+									}, 1000 / 60 );
+								}
+								else {
+									requestAnimationFrame(function() {
+										scroll(capPosition(offset + delta));
+									});
+								}
+								     
                             }
                         }
+                        event.preventDefault();
+                        event.stopPropagation();
                         return false;
                     }
 
                     function swipeEnd(coords, event, forceAnimation) {
                         //console.log('swipeEnd', 'scope.carouselIndex', scope.carouselIndex);
-
-                        // Prevent clicks on buttons inside slider to trigger "swipeEnd" event on touchend/mouseup
-                        if(event && !swipeMoved) {
-                            return;
-                        }
-
                         $document.unbind('mouseup', documentMouseUpEvent);
                         pressed = false;
-                        swipeMoved = false;
 
                         destination = offset;
 
@@ -347,8 +359,19 @@
                         if (forceAnimation) {
                             amplitude = offset - currentOffset;
                         }
-                        requestAnimationFrame(autoScroll);
+                        
+						/* Check Internet Explorer 9 Compatibility */					
+						if(angular.isDefined(iAttributes.rnCarouselIe9support) && typeof(requestAnimationFrame) != 'function'){
+							setTimeout( autoScroll, 1000 / 60 );
+						}
+						else {
+							requestAnimationFrame(autoScroll);
+						}
 
+                        if (event) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                        }
                         return false;
                     }
 
@@ -408,3 +431,4 @@
     }]);
 
 })();
+

@@ -44,13 +44,24 @@ angular.module('MyApp', ['angular-carousel']);
 </ul>
 ```
 
+ 5. Add a `rn-carousel-ie9support` attribute to your `<ul>` block to enable compatibility with the browser Internet Explorer 9
+ 
+ ```html
+<ul rn-carousel rn-carousel-ie9support class="image">
+  <li ng-repeat="image in sportImages" style="background-image:url({{ image }});">
+    <div class="layer">{{ image }}</div>
+  </li>
+</ul>
+```
+
 
 ## Features :
  - Mobile friendly, tested on webkit+firefox
- - use CSS 3D transformations and `requestAnimationFrame`.
+ - use CSS 3D transformations and `requestAnimationFrame` (disabled for IE9)
  - DOM buffering
  - index data-binding
  - optional indicators
+ - optional support for Internet Explorer 9
 
 ### Regular carousel :
  - `rn-carousel-index` two way binding to control the carousel position.
@@ -58,6 +69,7 @@ angular.module('MyApp', ['angular-carousel']);
  - `rn-carousel-buffered` boolean value to enable the carousel buffering, good to minimize the DOM, defaults to 5 slides. (works only with arrays)
  - `rn-carousel-swipe` boolean value to enable/disable swiping (default true)
  - `rn-carousel-control` boolean value to enable builtin prev/next buttons (you can override by CSS)
+ - `rn-carousel-ie9support` boolean value to enable compatibility with the browser Internet Explorer 9
 
 ## Todo :
  - see the [TODO file](./TODO)
